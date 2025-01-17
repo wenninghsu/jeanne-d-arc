@@ -1,128 +1,171 @@
 // Copyright (C) 2025 Potix Corporation. All Rights Reserved
 // History: 01/15/2025
-// Author: Wenning Hsu <wenninghsu@potix.com>
+// Author: Wenning Hsu <imwenninghsu@gmail.com>
 
-import { useSong } from '../context/SongContext';
-import { Link } from 'react-router-dom';
+import { useData } from '../context/DataContext';
+import { useCallback, useEffect } from 'react';
 
 function Admin() {
-  const { songs, selectSong, currentSong, playedSongs, togglePlayedStatus } = useSong();
-  const handleControl = (action) => {
-    const bc = new BroadcastChannel('song_control');
+  const { data, selectData, currentData, playedData, togglePlayedStatus, currentIndex, updateIndex } = useData();
+  const handleControl = useCallback((action) => {
+    if (action === 'RESET') {
+      updateIndex(0);
+    } else if (action === 'PREVIOUS') {
+      updateIndex(Math.max(0, currentIndex - 1));
+    } else if (action === 'NEXT') {
+      updateIndex(Math.min(currentData.content.length - 1, currentIndex + 1));
+    }
+    const bc = new BroadcastChannel('data_control');
     bc.postMessage({ action });
     bc.close();
+  }, [updateIndex, currentIndex, currentData]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (!currentData || !currentData.content || !currentData.content.length) return;
+        
+        if (event.key === 'ArrowUp') {
+          updateIndex(Math.max(0, currentIndex - 1));
+          handleControl('PREVIOUS');
+        } else if (event.key === 'ArrowDown') {
+          updateIndex(Math.min(currentData.content.length - 1, currentIndex + 1));
+          handleControl('NEXT');
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentData, handleControl, updateIndex, currentIndex]);
+
+  const getAvailableItems = () => {
+    const available = [];
+    Object.entries(data).forEach(([category, dataList]) => {
+      Object.keys(dataList).forEach((title) => {
+        const dataKey = `${category}-${title}`;
+        if (!playedData[dataKey]) {
+          available.push({ category, title });
+        }
+      });
+    });
+    return available;
+  };
+
+  const handleRandomSelect = () => {
+    const availableItems = getAvailableItems();
+    if (availableItems.length === 0) {
+      selectData('', '');
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * availableItems.length);
+    const { category: randomCategory, title: randomTitle } = availableItems[randomIndex];
+    if (currentData.category === randomCategory && currentData.title === randomTitle) {
+      handleRandomSelect();
+      return;
+    }
+    selectData(randomCategory, randomTitle);
   };
 
   return (
-    <div className="p-8 pb-32">
+    <div className="p-8 pb-40">
       <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-bold">Admin</h1>
-        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center py-8 space-x-4 bg-zinc-900">
+        <h1 className="h-12 text-5xl font-bold">{ currentData.title !== '' ? `${currentData.title}` : null }</h1>
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center py-6 space-x-4 border-t bg-zinc-900/95 backdrop-blur-sm border-zinc-800">
           <button
-            onClick={() => handleControl('PREVIOUS')}
-            className="px-6 py-3 text-white transition-colors rounded-lg bg-zinc-700 hover:bg-zinc-600"
+            onClick={handleRandomSelect}
+            className="px-4 py-2 text-xl font-semibold transition-colors rounded-full text-zinc-900 bg-amber-500 hover:bg-amber-700 active:bg-red-700"
           >
-            上一句
+            Random
           </button>
           <button
-            onClick={() => handleControl('NEXT')}
-            className="px-6 py-3 text-white transition-colors rounded-lg bg-zinc-700 hover:bg-zinc-600"
+            onClick={() => handleControl('PREVIOUS')}
+            className="px-4 py-3 text-white transition-colors rounded-md bg-zinc-700 hover:bg-zinc-600"
           >
-            下一句
+            上句 (⬆)
+          </button>
+          <span className='w-20 py-2 text-2xl leading-8 text-center text-white'>
+            { currentIndex + 1 } / { currentData.content.length }
+          </span>
+          <button
+            onClick={() => handleControl('NEXT')}
+            className="px-4 py-3 text-white transition-colors rounded-md bg-zinc-700 hover:bg-zinc-600"
+          >
+            下句 (⬇)
           </button>
           <button
             onClick={() => handleControl('RESET')}
-            className="px-6 py-3 text-white transition-colors rounded-lg bg-zinc-700 hover:bg-zinc-600"
+            className="px-4 py-3 text-white transition-colors rounded-md bg-zinc-700 hover:bg-zinc-600"
           >
-            重置
+            第一句
           </button>
           <button
             onClick={() => handleControl('SHOW_ALL')}
-            className="px-6 py-3 text-white transition-colors rounded-lg bg-zinc-700 hover:bg-zinc-600"
+            className="px-4 py-3 text-white transition-colors rounded-md bg-zinc-700 hover:bg-zinc-600"
           >
-            顯示全部
+            全部
           </button>
           <button
             onClick={() => handleControl('TOGGLE_TITLE')}
-            className="px-6 py-3 text-white transition-colors rounded-lg bg-zinc-700 hover:bg-zinc-600"
+            className="px-4 py-3 text-white transition-colors rounded-lg bg-rose-500 hover:bg-rose-700 active:bg-rose-900"
           >
-            顯示答案
+            開關答案
           </button>
         </div>
-        <div className="flex gap-4">
+        <div className="fixed z-50 top-4 right-4">
           <button
-            // onClick={() => {
-            //   const bc = new BroadcastChannel('song_selection');
-            //   bc.postMessage({ type: 'RESET_APP' });
-            //   bc.close();
-            //   selectSong('', '');
-            //   localStorage.removeItem('currentSong');
-            //   localStorage.removeItem('currentIndex');
-            //   localStorage.removeItem('showAll');
-            //   localStorage.removeItem('showTitle');
-            // }}
-            // onClick={() => {
-            //   const bc = new BroadcastChannel('song_selection');
-            //   bc.postMessage({ type: 'RESET_APP' });
-            //   bc.close();
-            //   localStorage.clear(); // 清除所有相關的 localStorage
-            //   selectSong('', ''); // 重置當前歌曲
-            // }}
             onClick={() => {
-              // 先清除所有 localStorage
               localStorage.clear();
-              // 發送重置消息
-              const bc = new BroadcastChannel('song_selection');
+              const bc = new BroadcastChannel('data_selection');
               bc.postMessage({ type: 'RESET_APP' });
-              // bc.close();
-              // 重置當前歌曲
-              selectSong('', '');
-              // 強制刷新 localStorage 中的狀態
+              bc.close();
+              selectData('', '');
               localStorage.setItem('currentIndex', '0');
               localStorage.setItem('showAll', 'false');
               localStorage.setItem('showTitle', 'false');
             }}
-            className="px-4 py-2 text-white transition-colors rounded-lg bg-zinc-700 hover:bg-zinc-600"
+            className="px-4 py-4 font-medium leading-8 text-white transition-colors border-none rounded-full bg-zinc-800 hover:bg-zinc-600 active:bg-zinc-400"
           >
-            Show Cover
+            封面
           </button>
         </div>
       </div>
       
-      {Object.entries(songs).map(([artist, songList]) => (
-        <div key={artist} className="mb-8">
-          <h2 className="mb-4 text-xl font-semibold">{artist}</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Object.entries(songList).map(([songName, lyricsList]) => {
-              const songKey = `${artist}-${songName}`;
-              const isPlayed = playedSongs[songKey];
+      {Object.entries(data).map(([category, dataList]) => (
+        <div key={category} className="mb-8">
+          <h2 className="mb-4 text-xl font-semibold">{category}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            {Object.entries(dataList).map(([title, contentList]) => {
+              const dataKey = `${category}-${title}`;
+              const isPlayed = playedData[dataKey];
               return (
                 <div
-                  key={songName}
+                  key={title}
                   className="relative flex gap-2"
                 >
                   <button
                     onClick={() => {
-                      if (currentSong.artist === artist && currentSong.songName === songName) {
+                      if (currentData.category === category && currentData.title === title) {
                         return;
                       }
-                      selectSong(artist, songName);
+                      selectData(category, title);
                     }}
-                    className={`p-4 border rounded-lg transition-colors duration-200 w-full pr-24
-                      ${currentSong.artist === artist && currentSong.songName === songName
-                        ? 'bg-zinc-600 border-zinc-400 text-white shadow-xl shadow-zinc-900/50 ring-1 ring-zinc-400'
+                    className={`p-1 border rounded-md transition-colors duration-200 w-full pr-24
+                      ${currentData.category === category && currentData.title === title
+                        ? 'bg-zinc-600/70 border-zinc-400 text-white font-medium'
                         : isPlayed
-                          ? 'bg-zinc-800/50 text-zinc-500 border-none'
-                          : 'hover:bg-zinc-700/70 hover:border-zinc-700 border-transparent'
+                          ? 'bg-zinc-300/40 text-zinc-300 border-none'
+                          : 'bg-zinc-300/40 hover:bg-zinc-700/30 hover:border-zinc-300 border-transparent'
                       }`}
                   >
-                    {songName} - {lyricsList.length} sent.
+                    {title} ({contentList.length})
                   </button>
                   <button
-                    onClick={() => togglePlayedStatus(artist, songName)}
-                    className={`absolute top-3 right-2 text-xs rounded-full
+                    onClick={() => togglePlayedStatus(category, title)}
+                    className={`absolute p-1 px-2 right-2 text-xs rounded-full leading-3 top-1/2 -translate-y-1/2
                       ${isPlayed 
-                        ? 'bg-zinc-600/50 text-zinc-300' 
+                        ? 'bg-zinc-300/60 text-zinc-600/30'
                         : 'bg-green-500 text-white'
                       }`}
                   >

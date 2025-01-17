@@ -1,18 +1,18 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { SongProvider } from './context/SongContext';
+import { DataProvider } from './context/DataContext';
 import Admin from './pages/Admin';
 import Index from './pages/Index';
 
 function App() {
   return (
-    <SongProvider>
-      <Router>
+    <DataProvider>
+      <Router basename="/jeanne-d-arc">
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/admin" element={<Admin />} />
         </Routes>
       </Router>
-    </SongProvider>
+    </DataProvider>
   );
 }
 
