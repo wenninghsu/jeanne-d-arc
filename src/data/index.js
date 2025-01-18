@@ -9,6 +9,7 @@ import figures from './figures';
 import landmarks from './landmarks';
 import foodrinks from './foodrinks';
 import others from './others';
+import en from './en';
 
 export default {
   "events": events,
@@ -16,4 +17,5 @@ export default {
   "landmarks": landmarks,
   "foodrinks": foodrinks,
   "others": others,
+  "en": en,
 }

@@ -61,7 +61,7 @@ function Admin() {
     }
     const randomIndex = Math.floor(Math.random() * availableItems.length);
     const { category: randomCategory, title: randomTitle } = availableItems[randomIndex];
-    if (currentData.category === randomCategory && currentData.title === randomTitle) {
+    if (randomCategory === 'en' || currentData.title === randomTitle) {
       handleRandomSelect();
       return;
     }
